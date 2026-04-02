@@ -35,6 +35,12 @@ class ProductModel extends Product{
   @HiveField(9)
   final  DateTime updateAt;
 
+  @HiveField(10)
+  final bool isChecked;
+
+  @HiveField(11)
+  final double idealQuantity;
+
   ProductModel({
     required this.id,
     required this.name,
@@ -46,6 +52,8 @@ class ProductModel extends Product{
     required this.price,
     required this.expiryDate,
     required this.updateAt,
+    this.isChecked = false,
+    this.idealQuantity = 0,
  }) : super(
         id:  id,
         name: name,
@@ -56,9 +64,43 @@ class ProductModel extends Product{
         threshold: threshold,
         price: price,
         expiryDate: expiryDate,
-        updateAt: updateAt
+        updateAt: updateAt,
+        isChecked: isChecked,
+        idealQuantity: idealQuantity,
 
       );
+
+  ProductModel copyWith({
+    String? id,
+    String? name,
+    String? category,
+    String? location,
+    double? quantity,
+    String? unity,
+    int? threshold,
+    double? price,
+    DateTime? expiryDate,
+    DateTime? updateAt,
+    bool? isChecked,
+    double? idealQuantity,
+
+}) {
+    return ProductModel(
+      id: id?? this.id,
+      name: name ?? this.name,
+      category: category ?? this.category,
+      location: location ?? this.location,
+      quantity: quantity ?? this.quantity,
+      unity: unity ?? this.unity,
+      threshold: threshold ?? this.threshold,
+      price: price ?? this.price,
+      expiryDate: expiryDate ?? this.expiryDate,
+      updateAt: updateAt ?? this.updateAt,
+      isChecked: isChecked ?? this.isChecked,
+      idealQuantity: idealQuantity ?? this.idealQuantity,
+
+    );
+  }
 
 
 }

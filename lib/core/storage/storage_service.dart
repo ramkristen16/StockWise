@@ -9,7 +9,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 class StorageService {
   static const _secureStorage = FlutterSecureStorage();
   static const _keyName = 'encryption_key';
-
+  //getEncryption: permet le code secret pour ouvrir une boite Hive
   static Future<List<int>> getEncryptionKey() async {
     var keyString = await _secureStorage.read(key: _keyName);
     if(keyString == null){
@@ -19,7 +19,9 @@ class StorageService {
     }
     return base64Url.decode(keyString);
   }
+//Hive avec chiffrement : secureStorage , chiffrement + ouverture de Box
 
+  //init: permet de initialiser HIve
   static Future<void> init() async {
     await Hive.initFlutter();
 
@@ -27,12 +29,13 @@ class StorageService {
     Hive.registerAdapter(ProductModelAdapter());
   }
   final encryptionKey = await getEncryptionKey();
-
+ //ouverture de la boite Hive pour les produits
   await Hive.openBox<ProductModel>(
       'productsBox',
       encryptionCipher: HiveAesCipher(encryptionKey),
     );
-    await Hive.openBox<ProductModel>(
+  //ouverture de la boite pour les paramètres
+  await Hive.openBox<ProductModel>(
       'settingsBox',
       encryptionCipher: HiveAesCipher(encryptionKey),
     );
