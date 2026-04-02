@@ -11,6 +11,8 @@ class Product {
   final double price;
   final DateTime expiryDate;
   final DateTime updateAt;
+  final bool isChecked;
+  final double idealQuantity;
 
   Product({
     required this.id,
@@ -22,7 +24,9 @@ class Product {
     required this.threshold,
     required this.price,
     required this.expiryDate,
-    required this.updateAt
+    required this.updateAt,
+    this.isChecked = false,
+    this.idealQuantity = 1.0,
     });
   //Si la quantité est inférieur ou égale au seuil critique , fait true : il est critque sinon false
   bool get isCritical => quantity <= threshold;
