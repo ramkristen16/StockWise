@@ -42,6 +42,10 @@ dependencies:
   riverpod: ^3.2.1
   riverpod_annotation: ^4.0.2
   flutter_riverpod: ^3.3.1
+  google_fonts: ^8.0.2
+  flutter_barcode_scanner: ^2.0.0
+  uuid: ^4.5.3
+  dio: ^5.9.2
 
 dev_dependencies:
   flutter_test:
