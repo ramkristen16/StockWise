@@ -58,3 +58,30 @@ class MemberRole {
   static const String member = 'Membre';
 }
 
+
+class AppRoutes {
+  static const String dashboard    = '/';
+  static const String stock        = '/stock';
+  static const String shopping     = '/shopping';
+  static const String addProduct   = '/add-product';
+  static const String family       = '/family';
+}
+
+//index pour le tab de navigation
+class NavTab {
+  static const int dashboard  = 0;
+  static const int stock      = 1;
+  static const int shopping   = 2;
+  static const int addProduct = 3;
+  static const int family     = 4;
+
+  //label en bas de chaque icone de navigation
+  static const List<String> labels = [
+    'Accueil',
+    'Stock',
+    'Course',
+    'Ajouter',
+    'Famille',
+  ];
+}
+
