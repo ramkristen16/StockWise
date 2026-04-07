@@ -11,7 +11,9 @@ import 'package:stock_wise/presentation/screens/product/scann_screen.dart';
 import 'package:stock_wise/presentation/viewmodels/stock_provider.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../core/navigation/app_router.dart';
 import '../../../core/theme/app_colors.dart';
+import '../stock/stock_screen.dart';
 
 class AddProductScreen extends ConsumerStatefulWidget {
   final ProductModel? productEdit ;
@@ -93,31 +95,41 @@ class AddProductScreen extends ConsumerStatefulWidget {
    }
     //sauvegarde
    Future<void> _save() async {
-     if(_nameController.text.trim().isEmpty){
+     if (_nameController.text.trim().isEmpty) {
        _snack('Nom obligatoire', err: true);
        return;
      }
+
      final p = ProductModel(
-         id: _isEditMode ? widget.productEdit!.id : const Uuid().v4(),
-         name:_nameController.text.trim(),
-         category:_selectedCategory,
-         location: _selectedLocation,
-         quantity:double.tryParse(_quantityController.text ) ?? 1.0,
-         unity: _unitController.text.trim().isEmpty ? 'unités' : _unitController.text.trim(),
-         price: double.tryParse(_priceController.text) ?? 0.0,
-         threshold:int.tryParse(_thresholdController.text) ?? 3 ,
-         expiryDate: _expiryDate,
-
-         updateAt: DateTime.now(),
+       id: _isEditMode ? widget.productEdit!.id : const Uuid().v4(),
+       name: _nameController.text.trim(),
+       category: _selectedCategory,
+       location: _selectedLocation,
+       quantity: double.tryParse(_quantityController.text) ?? 1.0,
+       unity: _unitController.text.trim().isEmpty ? 'unités' : _unitController.text.trim(),
+       price: double.tryParse(_priceController.text) ?? 0.0,
+       threshold: int.tryParse(_thresholdController.text) ?? 3,
+       expiryDate: _expiryDate,
+       updateAt: DateTime.now(),
      );
-     setState(() => _isLoading = true);
-     await ref.read(stockProvider.notifier).addOrUpdateProduct(p);
-     setState(() => _isLoading = false);
-     if (!mounted) return;
-     _snack(_isEditMode ? 'Produit modifié ✓' : "Ajouté à l'inventaire ✓");
-     Navigator.of(context).pop();
-   }
 
+     setState(() => _isLoading = true);
+
+     await ref.read(stockProvider.notifier).addOrUpdateProduct(p);
+
+     setState(() => _isLoading = false);
+
+     if (!mounted) return;
+
+     _snack(_isEditMode ? 'Produit modifié ✓' : "Ajouté à l'inventaire ✓");
+
+     //1 : index de stock
+     ref.read(navIndexProvider.notifier).state = 1;
+
+     if (_isEditMode) {
+       Navigator.of(context).pop();
+     }
+   }
    //date
    Future<void> _pickDate() async {
      final d = await showDatePicker(
