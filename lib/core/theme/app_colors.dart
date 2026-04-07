@@ -14,7 +14,7 @@ class AppColors {
   static const alertOrange  = Color(0xFFF97316);
   static const errorRed     = Color(0xFFEF4444);
   static const errorDark    = Color(0xFFDC2626);
-
+  static const warningYellow = Color(0xFFAAAAAA);
   static const background   = Color(0xFFF8FAFC);
   static const white        = Color(0xFFFFFFFF);
   static const border       = Color(0xFFE2E8F0);

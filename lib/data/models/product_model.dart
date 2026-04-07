@@ -30,7 +30,7 @@ class ProductModel extends Product{
   final double price;
 
   @HiveField(8)
-  final  DateTime expiryDate;
+  final  DateTime? expiryDate;
 
   @HiveField(9)
   final  DateTime updateAt;
@@ -50,7 +50,7 @@ class ProductModel extends Product{
     required this.unity,
     required this.threshold,
     required this.price,
-    required this.expiryDate,
+    this.expiryDate,
     required this.updateAt,
     this.isChecked = false,
     this.idealQuantity = 0,

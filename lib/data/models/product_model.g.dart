@@ -25,7 +25,7 @@ class ProductModelAdapter extends TypeAdapter<ProductModel> {
       unity: fields[5] as String,
       threshold: fields[6] as int,
       price: fields[7] as double,
-      expiryDate: fields[8] as DateTime,
+      expiryDate: fields[8] as DateTime?,
       updateAt: fields[9] as DateTime,
       isChecked: fields[10] as bool,
       idealQuantity: fields[11] as double,

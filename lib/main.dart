@@ -51,6 +51,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         scaffoldBackgroundColor: AppColors.background,
         useMaterial3: true,
+        fontFamily: 'Inter',
       ),
       home: const MainScaffold(),
     );

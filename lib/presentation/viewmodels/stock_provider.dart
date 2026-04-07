@@ -5,7 +5,7 @@ import 'package:stock_wise/data/repository/stock_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 
-final StockProvider = StateNotifierProvider<StockNotifier, List<ProductModel>>((ref){
+final stockProvider = StateNotifierProvider<StockNotifier, List<ProductModel>>((ref){
   return StockNotifier(StockRepository());
 });
 
@@ -25,6 +25,7 @@ class StockNotifier extends StateNotifier<List<ProductModel>> {
   }
 
   Future<void> addOrUpdateProduct(ProductModel product) async {
+
     try{
       await _repository.saveProducts(product);
       await loadProducts();
