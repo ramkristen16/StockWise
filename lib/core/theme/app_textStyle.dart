@@ -106,6 +106,7 @@ class AppTextStyles {
   static TextStyle navLabel = GoogleFonts.inter(
     fontSize: 12,
     fontWeight: FontWeight.w500,
+
   );
 
   //caption

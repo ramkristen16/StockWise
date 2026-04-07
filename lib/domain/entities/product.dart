@@ -9,7 +9,7 @@ class Product {
   final String unity;
   final int threshold;
   final double price;
-  final DateTime expiryDate;
+  final DateTime? expiryDate;
   final DateTime updateAt;
   final bool isChecked;
   final double idealQuantity;
@@ -34,7 +34,7 @@ class Product {
   //si il reste que 0 à 3 entre la date d'expiration est aujourd'hui , fait true : il va bientot s'expirer sinon false
   bool get isExpiringSoon {
     DateTime aujourdhui = DateTime.now();
-    int jourRestants = expiryDate.difference(aujourdhui).inDays;
+    int jourRestants = expiryDate!.difference(aujourdhui).inDays;
     if (jourRestants >= 0 && jourRestants <= 3){
       return true;
     }

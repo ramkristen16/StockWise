@@ -1,5 +1,3 @@
-
-
 import 'package:flutter/material.dart';
 import 'package:flutter/src/widgets/framework.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -52,7 +50,7 @@ class MainScaffold extends ConsumerWidget {
         ),
         child: SafeArea(
             child: Padding(
-                padding: const EdgeInsetsGeometry.symmetric(vertical: 8),
+                padding: const EdgeInsetsGeometry.symmetric(vertical: 12),
                 child: Row(
                   children: [
                     _NavItem(
@@ -127,7 +125,7 @@ class _NavItem extends StatelessWidget {
     final bool isActive = index == currentIndex;
 
     //couleur active
-    final Color color = isActive ? AppColors.indigo : AppColors.textMuted;
+    final Color color = isActive ? AppColors.indigo : AppColors.warningYellow;
 
 
     return Expanded(
