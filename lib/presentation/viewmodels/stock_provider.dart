@@ -9,12 +9,16 @@ final stockProvider = StateNotifierProvider<StockNotifier, List<ProductModel>>((
   return StockNotifier(StockRepository());
 });
 
+
 class StockNotifier extends StateNotifier<List<ProductModel>> {
   final StockRepository _repository;
-
+  String _searchQuery = '';
+  String _selectedCategory = 'Tout';
   StockNotifier(this._repository) : super([]) {
     loadProducts();
   }
+  String get searchQuery => _searchQuery;
+  String get selectedCategory => _selectedCategory;
 
   Future<void> loadProducts() async {
     try {
@@ -44,6 +48,18 @@ class StockNotifier extends StateNotifier<List<ProductModel>> {
       debugPrint('[StockNotifier] removeProduct error: $e');
     }
   }
+  //recheche
+  void updateSearchQuery(String query){
+    _searchQuery = query.toLowerCase().trim();
+    state = [...state];
+  }
+  //categorie selectionné
+  void updateCategory(String category){
+      _selectedCategory = category;
+    state = [...state];
+  }
+
+
 
   //mouvement de stock
 
@@ -118,7 +134,24 @@ class StockNotifier extends StateNotifier<List<ProductModel>> {
 // compteur qui compte le nombre d'articles dans shoppingList : achat
 int get criticalAlertCount => shoppingList.length;
 
+  //rupture de stock
+  bool isOutOfStock(ProductModel product) => product.quantity == 0;
+
  //alerte si expiringSoon ou critical
 bool get hasAlert => criticalAlertCount > 0 || expiringSoonList.isNotEmpty;
 }
+
+//recherche par catégories
+final filteredProductsProvider = Provider<List<ProductModel>>((ref) {
+  final notifier = ref.watch(stockProvider.notifier);
+  final allProducts = ref.watch(stockProvider);
+
+  return allProducts.where((product) {
+    final matchesCategory = notifier.selectedCategory == 'Tout' ||
+        product.category == notifier.selectedCategory;
+    final matchesSearch = notifier.searchQuery.isEmpty ||
+        product.name.toLowerCase().contains(notifier.searchQuery);
+    return matchesCategory && matchesSearch;
+  }).toList();
+});
 
