@@ -122,14 +122,45 @@ class StockNotifier extends StateNotifier<List<ProductModel>> {
    return shoppingList.fold(0.0, (total,item) => total +(item.price * item.idealQuantity));
 
  }
+  double get dashboardExpenses => checkedShoppingList;
 
- //dépenses mensuels
- double get monthlyExpenses {
+   double get monthlyExpenses {
    final now = DateTime.now();
    return state
        .where((p) => p.updateAt.month == now.month && p.updateAt.year == now.year)
        .fold(0.0, (total,item) => total +(item.price * item.quantity));
 }
+
+//dépenses des 6mois derniers pour l'affichage du graphe
+  List<double> get last6MonthsExpenses {
+    final now = DateTime.now();
+    return List.generate(6, (i) {
+      final target = DateTime(now.year, now.month - 5 + i);
+      return state
+          .where((p) =>
+      p.updateAt.month == target.month &&
+          p.updateAt.year == target.year)
+          .fold(0.0, (sum, p) => sum + (p.price * p.quantity));
+    });
+  }
+//labels des 6 mois derniesrs
+  List<String> get last6MonthsLabels {
+    final now = DateTime.now();
+    const labels = ['J','F','M','A','M','J','J','A','S','O','N','D'];
+    return List.generate(6, (i) {
+      final target = DateTime(now.year, now.month - 5 + i);
+      return labels[target.month - 1];
+    });
+  }
+
+  // pourcentages
+  List<double> get last6MonthsPercentages {
+    final data = last6MonthsExpenses;
+    final maxVal = data.reduce((a, b) => a > b ? a : b);
+    if (maxVal == 0) return List.filled(6, 0.0);
+    return data.map((v) => v / maxVal).toList();
+  }
+
 
 // compteur qui compte le nombre d'articles dans shoppingList : achat
 int get criticalAlertCount => shoppingList.length;
@@ -154,4 +185,6 @@ final filteredProductsProvider = Provider<List<ProductModel>>((ref) {
     return matchesCategory && matchesSearch;
   }).toList();
 });
+
+final showCriticalOnlyProvider = StateProvider<bool>((ref) => false);
 

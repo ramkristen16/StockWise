@@ -473,7 +473,8 @@ class AddProductScreen extends ConsumerStatefulWidget {
                  kb: TextInputType.number, align: TextAlign.center))),
          const SizedBox(width: 12),
          Expanded(child: _FormField(label: 'Unité',
-             child: _InputField(ctrl: _unitController, hint: 'Ex: kg, L, pcs'))),
+           child: _UnitDropdown(controller: _unitController),
+         )),
        ]),
      ],
    ));
@@ -491,7 +492,7 @@ class AddProductScreen extends ConsumerStatefulWidget {
          ]),
          const SizedBox(height: 8),
          _InputField(ctrl: _priceController, hint: '0.00',
-             kb: const TextInputType.numberWithOptions(decimal: true), prefix: r'$ '),
+             kb: const TextInputType.numberWithOptions(decimal: true), prefix:'Ar '),
        ],
      )),
      const SizedBox(width: 12),
@@ -673,4 +674,50 @@ class DashedBorderPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+//classe pour la dropdrown de unités
+class _UnitDropdown extends StatefulWidget {
+  final TextEditingController controller;
+  const _UnitDropdown({required this.controller});
+
+  @override
+  State<_UnitDropdown> createState() => _UnitDropdownState();
+}
+
+class _UnitDropdownState extends State<_UnitDropdown> {
+  //ls unités
+  static const _units = ['unités', 'kg', 'g', 'L', 'mL', 'pcs', 'boîte', 'sachet', 'bouteille', 'rouleau'];
+
+  @override
+  Widget build(BuildContext context) {
+    final current = widget.controller.text.isEmpty ? 'unités' : widget.controller.text;
+
+    return Container(
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _units.contains(current) ? current : 'unités',
+          isExpanded: true,
+          icon: const Icon(Icons.keyboard_arrow_down_rounded,
+              color: AppColors.textMuted, size: 20),
+          style: AppTextStyles.fieldValue,
+          items: _units.map((u) => DropdownMenuItem(
+            value: u,
+            child: Text(u),
+          )).toList(),
+          onChanged: (val) {
+            if (val != null) {
+              setState(() => widget.controller.text = val);
+            }
+          },
+        ),
+      ),
+    );
+  }
 }
