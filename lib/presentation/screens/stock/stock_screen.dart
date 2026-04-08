@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:stock_wise/presentation/viewmodels/stock_provider.dart';
 
 import '../../../core/constants/app_constants.dart';
@@ -12,7 +13,13 @@ class StockScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final products = ref.watch(filteredProductsProvider);
+    final showCriticalOnly = ref.watch(showCriticalOnlyProvider);
+    final allProducts = ref.watch(filteredProductsProvider);
+
+    final products = showCriticalOnly
+        ? allProducts.where((p) => p.isCritical).toList()
+        : allProducts;
+
     final notifier = ref.read(stockProvider.notifier);
     final topPad = MediaQuery
         .of(context)
@@ -27,6 +34,11 @@ class StockScreen extends ConsumerWidget {
         children: [
           _StockHeader(notifier: notifier, topPad: topPad),
           _CategoryBar(notifier: notifier),
+          if (showCriticalOnly)
+            _CriticalFilterBanner(onClear: () {
+              ref.read(showCriticalOnlyProvider.notifier).state = false;
+              ref.read(stockProvider.notifier).updateCategory('Tout');
+            }),
           Expanded(
             child: products.isEmpty
                 ? const _EmptyState()
@@ -178,7 +190,7 @@ class _CategoryBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.watch(stockProvider);
-    final selected = ref.read(stockProvider.notifier).selectedCategory;
+    final selected = ref.watch(stockProvider.notifier).selectedCategory;
     return Container(
       color: Colors.transparent,
       padding: const EdgeInsets.symmetric(vertical: 12),
@@ -189,8 +201,10 @@ class _CategoryBar extends ConsumerWidget {
           children: ['Tout', ...ProductCategory.all].map((cat) {
             final isSelected = (cat == selected);
             return GestureDetector(
-
-              onTap: () => notifier.updateCategory(cat == 'Tout' ? 'Tout' : cat),
+              onTap: () {
+                notifier.updateCategory(cat == 'Tout' ? 'Tout' : cat);
+                ref.read(showCriticalOnlyProvider.notifier).state = false;
+              },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
                 margin: const EdgeInsets.only(right: 10),
@@ -460,6 +474,54 @@ class _EmptyState extends StatelessWidget {
         ),
       ],
     ),
+  );
+}
+//pour voir seulement les stocks critiques depuis dahsboard
+class _CriticalFilterBanner extends StatelessWidget {
+  final VoidCallback onClear;
+  const _CriticalFilterBanner({required this.onClear});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+    decoration: BoxDecoration(
+      color: AppColors.alertOrange.withOpacity(0.12),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: AppColors.alertOrange.withOpacity(0.4)),
+    ),
+    child: Row(children: [
+      const Icon(Icons.filter_list_rounded,
+          color: AppColors.alertOrange, size: 16),
+      const SizedBox(width: 8),
+      Expanded(
+        child: Text(
+          'Filtre actif : Stock critique uniquement',
+          style: AppTextStyles.caption.copyWith(
+            color: AppColors.alertOrange,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+      // Bouton pour effacer le filtre
+      GestureDetector(
+        onTap: onClear,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: AppColors.alertOrange,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            'Tout voir',
+            style: AppTextStyles.caption.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ),
+    ]),
   );
 }
 
