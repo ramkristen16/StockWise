@@ -36,7 +36,6 @@ class ShoppingListScreen extends ConsumerWidget {
           checkedCount: checkedCount,
           total: list.length,
         ),
-        // ... (ton code précédent)
         Expanded(
           child: ListView.builder(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 160),
