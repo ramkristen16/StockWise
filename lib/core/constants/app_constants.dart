@@ -28,7 +28,7 @@ static String iconOf(String category) {
 }
 
 class ProductLocation {
-
+  static const String define = 'A définir';
   static const String frigo = 'Frigo';
   static const String congelateur = 'Congélateur';
   static const String placard = 'Placard cuisine';
@@ -37,12 +37,13 @@ class ProductLocation {
   static const String autre = 'Autre';
 
   static const List<String> all = [
-    frigo, congelateur, placard, gardeManger, salleDeBain, autre
+    frigo, congelateur, placard, gardeManger, salleDeBain, autre , define
   ];
 
   static String iconOf(String location) {
     switch (location) {
-      case frigo:          return '🧊';
+      case define:return '❓';
+      case frigo: return '🧊';
       case congelateur:    return '❄️';
       case placard: return '🚪';
       case gardeManger:    return '🏠';
@@ -84,4 +85,13 @@ class NavTab {
     'Famille',
   ];
 }
+class StockStatus {
+  static const String active   = 'active';
+  static const String critical = 'critical';
+  static const String pending  = 'pending';
+}
 
+
+class ProductUnits {
+  static const List<String> all = ['pcs', 'kg', 'L', 'sac', 'paquet'];
+}
