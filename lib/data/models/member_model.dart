@@ -10,6 +10,7 @@ class MemberModel {
     required this.role,
     this.photoUrl
 });
+
   factory MemberModel.fromMap(Map<String, dynamic> map, String id) {
     return MemberModel(
         uid: id,

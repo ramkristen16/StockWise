@@ -9,7 +9,6 @@ import 'package:stock_wise/data/models/household_model.dart';
 
 class HouseholdRepositoryImpl implements HouseholdRepository {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
-//prendre l'info du foyer
   @override
   Future<Household?> getHouseholdDetails(String householdId) async {
     final doc = await _db.collection('households').doc(householdId).get();

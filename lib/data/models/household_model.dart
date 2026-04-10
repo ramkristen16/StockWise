@@ -1,6 +1,5 @@
 import 'package:hive/hive.dart';
 import '../../domain/entities/household.dart';
-
 part 'household_model.g.dart';
 
 @HiveType(typeId: 2)
