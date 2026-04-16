@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "170248424793",
+    "project_id": "stockwise-kri",
+    "storage_bucket": "stockwise-kri.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:170248424793:android:db83211b067da955321048",
+        "android_client_info": {
+          "package_name": "com.example.stock_wise"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "170248424793-vijpo2k4a737gaiuhm2q4et4ej5jpva1.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.stock_wise",
+            "certificate_hash": "85466dfa22121265c91f85183e794aa6a53810a3"
+          }
+        },
+        {
+          "client_id": "170248424793-ortbp4ei3n6snmrho6m6k7vgfs24n98c.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCv3KWOBkSzGYIyqK_uCxGYEMNj5E8Fh4w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "170248424793-ortbp4ei3n6snmrho6m6k7vgfs24n98c.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "170248424793-ria00th9jrg0c56okj07bh1sbbf5g135.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.stockWise"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
