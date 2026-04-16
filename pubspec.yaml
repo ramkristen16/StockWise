@@ -39,6 +39,14 @@ dependencies:
   flutter_secure_storage: ^10.0.0
 
 
+  firebase_core: ^3.10.1
+  firebase_auth: ^5.4.3
+  cloud_firestore: ^5.6.1
+  google_sign_in: ^6.2.2
+
+  flutter_local_notifications:  ^17.0.0
+
+
   riverpod: ^3.2.1
   riverpod_annotation: ^4.0.2
   flutter_riverpod: ^3.3.1
@@ -46,12 +54,17 @@ dependencies:
   uuid: ^4.5.3
   dio: ^5.9.2
   mobile_scanner: ^7.2.0
+  share_plus: ^12.0.2
+  font_awesome_flutter: ^11.0.0
+  intl: ^0.20.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   build_runner: ^2.4.13
   hive_generator: ^2.0.1
+  flutter_launcher_icons: ^0.13.1
+
 
 
   # The "flutter_lints" package below contains a set of recommended lints to
@@ -71,6 +84,8 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+  assets:
+    - assets/images/google-logo.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:
@@ -102,3 +117,12 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icones/inventory-2.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/icones/inventory-2.png"
+  image_size_factor: 0.6
+
+
