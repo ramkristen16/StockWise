@@ -83,7 +83,7 @@ class LoginScreen extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05), // Effet de transparence
+        color: Colors.white.withOpacity(0.05),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
@@ -128,7 +128,7 @@ class LoginScreen extends ConsumerWidget {
               style: AppTextStyles.subtitle.copyWith(color: const Color(0xFF64748B))),
           const SizedBox(height: 32),
 
-          // BOUTON GOOGLE
+          // bouton google
           _GoogleButton(isLoading: isLoading, ref: ref, context: context),
 
           const SizedBox(height: 24),

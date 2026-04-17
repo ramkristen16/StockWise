@@ -54,7 +54,7 @@ class FamilyScreen extends ConsumerWidget {
                             Text('Membres (${sortedMembers.length})', style: AppTextStyles.h3),
                             const SizedBox(height: 16),
                             ...sortedMembers.map((m) => _MemberTile(
-                              uid: m.uid, // N'oublie pas de passer le vrai UID pour les actions
+                              uid: m.uid,
                               name: m.name,
                               role: m.role,
                               isMe: m.uid == user?.uid,
