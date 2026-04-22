@@ -6,7 +6,12 @@ import '../../../core/navigation/app_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_textStyle.dart';
 import '../../../data/models/product_model.dart';
+import '../../viewmodels/auth_provider.dart';
+import '../../viewmodels/family_provider.dart';
 import '../product/add_product_screen.dart';
+import '../shopping/shopping_list_screen.dart';
+import 'expiring_all_screen.dart';
+import 'notification_screen.dart';
 
 class DashboardScreen extends ConsumerWidget{
   const DashboardScreen({super.key});
@@ -17,7 +22,7 @@ class DashboardScreen extends ConsumerWidget{
     final notifier = ref.read(stockProvider.notifier);
     final topPad = MediaQuery.of(context).padding.top;
 
-    //getion d'état vide
+    //gestion d'état vide
     if (products.isEmpty) {
       return Scaffold(
         backgroundColor: AppColors.background,
@@ -78,6 +83,8 @@ class DashboardScreen extends ConsumerWidget{
             const SizedBox(height: 24),
             const _CriticalSection(),
             const SizedBox(height: 24),
+            const _InboxSection(),
+            const SizedBox(height: 24),
             const _ExpiringSection(),
             const SizedBox(height: 24),
             Padding(
@@ -118,23 +125,28 @@ class DashboardScreen extends ConsumerWidget{
 class _DashboardHeader extends ConsumerWidget {
   final double topPad;
   const _DashboardHeader({required this.topPad});
-  String _formatAr(double value) {
-    final int v = value.toInt();
-    if (v >= 1000) {
-      return '${(v ~/ 1000)} ${(v % 1000).toString().padLeft(3, '0')}';
-    }
-    return '$v';
-  }
+
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final householdAsync = ref.watch(householdDetailsProvider);
+    final familyName = householdAsync.value?.name ?? "Mon Foyer";
+    final authState = ref.watch(authStateProvider);
+    final userName = authState.value?.displayName ?? "Utilisateur";
+    final allProducts = ref.watch(stockProvider);
     final notifier = ref.read(stockProvider.notifier);
-    final products = ref.watch(stockProvider);
-    final totalQty = products.length;
-    final criticalCount = products.where((p) => p.isCritical).length;
-    final totalValue = products.fold(0.0, (sum, p) => sum + (p.price * p.quantity));
 
-    final monthlyExp = notifier.checkedShoppingList;
+    final alertCount = notifier.shoppingList.length + notifier.expiringSoonList.length;
+
+
+    final int totalQty = allProducts.fold(0, (sum, p) => sum + p.quantity.toInt());
+    final double totalValue = allProducts.fold(0.0, (total, item) => total + (item.price * item.quantity));
+
+    final int expiredCount = allProducts.where((p) => p.isExpired).length;
+    final int soonCount = notifier.expiringSoonList.length;
+    final int criticalCount = allProducts.where((p) => p.isCritical && p.quantity > 0).length;
+    final int ruptureCount = allProducts.where((p) => p.quantity == 0).length;
+
 
     return Container(
       padding: EdgeInsets.only(
@@ -166,7 +178,7 @@ class _DashboardHeader extends ConsumerWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Famille Rakoto',
+                       familyName,
                       style: AppTextStyles.h2.copyWith(
                         fontSize: 26,
                         fontWeight: FontWeight.w800,
@@ -176,21 +188,61 @@ class _DashboardHeader extends ConsumerWidget {
                   ],
                 ),
               ),
-              Container(
-                width: 48, height: 48,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.18),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Icon(Icons.inventory_2_outlined,
-                    color: Colors.white, size: 24),
-              ),
-            ],
+
+    GestureDetector(
+        onTap: () => Navigator.of(context).push(
+         MaterialPageRoute(builder: (_) => const NotificationScreen()),
+    ),
+        child: Stack(
+        clipBehavior: Clip.none,
+    children: [
+    Container(
+        width: 48, height: 48,
+        decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.18),
+        borderRadius: BorderRadius.circular(16),
+    ),
+       child: const Icon(
+          Icons.notifications_outlined,
+          color: Colors.white,
+          size: 24
+    ),
+    ),
+
+    if (alertCount > 0)
+        Positioned(
+          top: -4,
+          right: -4,
+          child: Container(
+               padding: const EdgeInsets.all(4),
+                decoration: const BoxDecoration(
+                color: AppColors.errorRed, shape: BoxShape.circle,
+
+    ),
+        constraints: const BoxConstraints(
+        minWidth: 20,
+         minHeight: 20,
+    ),
+        child: Center(
+            child: Text(
+              alertCount > 9 ? '9+' : '$alertCount',
+          style: const TextStyle(
+         color: Colors.white,   fontSize: 10,
+            fontWeight: FontWeight.w900,
+            ),
+        ),
+      ),
+      ),
+       ),
+       ],
+        ),
+    )
+
+    ],
           ),
           const SizedBox(height: 20),
           Row(
             children: [
-              // Total
               Expanded(
                 child: _StatCard(
                   icon: Icons.inventory_2_outlined,
@@ -199,35 +251,38 @@ class _DashboardHeader extends ConsumerWidget {
                   sub: '${_formatAr(totalValue)} Ar',
                   bgColor: const Color(0xFF2D3F55),
                   textColor: Colors.white,
-                  iconColor: Colors.white70,
+                  iconColor: Colors.white.withOpacity(0.6),
                 ),
               ),
               const SizedBox(width: 10),
-              // Critique
+
               Expanded(
                 child: _StatCard(
                   icon: Icons.warning_amber_rounded,
                   label: 'Critique',
-                  value: '$criticalCount',
+                  value: '${ruptureCount + criticalCount}',
+                  sub: ruptureCount > 0 ? '$ruptureCount en rupture' : 'À racheter',
                   bgColor: AppColors.alertOrange,
                   textColor: Colors.white,
                   iconColor: Colors.white,
                 ),
               ),
               const SizedBox(width: 10),
-              // Dépenses
+
               Expanded(
                 child: _StatCard(
-                  icon: Icons.attach_money_rounded,
-                  label: 'Dépenses',
-                  value: '${monthlyExp.toStringAsFixed(0)} Ar',
-                  bgColor: AppColors.successGreen,
+                  icon: Icons.timer_outlined,
+                  label: 'Dates',
+                  value: '${expiredCount + soonCount}',
+                  sub: expiredCount > 0 ? '$expiredCount périmé(s) !' : 'À consommer',
+                  bgColor: expiredCount > 0 ? AppColors.errorRed : AppColors.successGreen,
                   textColor: Colors.white,
                   iconColor: Colors.white,
                 ),
               ),
             ],
           ),
+
         ],
       ),
     );
@@ -301,20 +356,59 @@ class _ConsommationChart extends ConsumerWidget {
     final notifier = ref.watch(stockProvider.notifier);
     final percentages = notifier.last6MonthsPercentages;
     final labels = notifier.last6MonthsLabels;
+    final monthlyExp = ref.watch(stockProvider.notifier).monthlyExpenses;
+
+
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'CONSOMMATION',
-            style: AppTextStyles.fieldLabel.copyWith(
-              color: AppColors.indigo,
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 1.2,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.end,
+
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+
+                children: [
+                  Text(
+                    'CONSOMMATION',
+                    style: AppTextStyles.fieldLabel.copyWith(
+                      color: AppColors.indigo,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Tendance des 6 mois',
+                    style: AppTextStyles.subtitle.copyWith(fontSize: 12),
+                  ),
+                ],
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+
+                    '${_formatAr(monthlyExp)} Ar',
+                    style: AppTextStyles.h2.copyWith(
+                      fontSize: 18,
+                      color: AppColors.successGreen,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  Text(
+                    'ce mois',
+                    style: AppTextStyles.caption.copyWith(fontSize: 10),
+                  ),
+                ],
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           SizedBox(
@@ -323,8 +417,7 @@ class _ConsommationChart extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: List.generate(6, (i) {
-                final barHeight =
-                (percentages[i] * 120).clamp(4.0, 120.0);
+                final barHeight = (percentages[i] * 120).clamp(6.0, 120.0);
                 final isCurrentMonth = i == 5;
 
                 return Expanded(
@@ -333,17 +426,17 @@ class _ConsommationChart extends ConsumerWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        // Barre dynamique
                         AnimatedContainer(
                           duration:
-                          Duration(milliseconds: 300 + i * 80),
+                          Duration(milliseconds:500),
                           curve: Curves.easeOut,
                           height: barHeight,
                           decoration: BoxDecoration(
                             color: isCurrentMonth
                                 ? const Color(0xFF1E293B)
                                 : AppColors.indigo.withOpacity(0.5),
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -355,9 +448,7 @@ class _ConsommationChart extends ConsumerWidget {
                             color: isCurrentMonth
                                 ? AppColors.foreground
                                 : AppColors.textMuted,
-                            fontWeight: isCurrentMonth
-                                ? FontWeight.w700
-                                : FontWeight.normal,
+                            fontWeight: isCurrentMonth ? FontWeight.w700 : FontWeight.normal,
                           ),
                         ),
                       ],
@@ -373,7 +464,7 @@ class _ConsommationChart extends ConsumerWidget {
   }
 }
 
-// stock sous le seuil critique
+// stock sous le seuil critique et rupture
 class _CriticalSection extends ConsumerWidget {
   const _CriticalSection();
 
@@ -383,12 +474,13 @@ class _CriticalSection extends ConsumerWidget {
     final notifier = ref.read(stockProvider.notifier);
     final critical = notifier.shoppingList;
 
-
+    final sortedCritical = List<ProductModel>.from(critical)
+      ..sort((a, b) => a.quantity.compareTo(b.quantity));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.only(left: 16, right:24),
           child: Row(
             children: [
               Container(
@@ -403,7 +495,8 @@ class _CriticalSection extends ConsumerWidget {
                 'Stock Critique',
                 style: AppTextStyles.h2.copyWith(
                   fontSize: 18,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.primaryNavy,
                 ),
               ),
               const Spacer(),
@@ -419,6 +512,8 @@ class _CriticalSection extends ConsumerWidget {
                     color: AppColors.indigo,
                     fontWeight: FontWeight.w600,
                     decoration: TextDecoration.underline,
+                    decorationColor: const Color(0xFF4C4DDC).withOpacity(0.4),
+
                   ),
                 ),
               ),
@@ -426,7 +521,7 @@ class _CriticalSection extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 12),
-        if (critical.isEmpty)
+        if (sortedCritical.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Text(' Aucun produit critique',
@@ -441,7 +536,7 @@ class _CriticalSection extends ConsumerWidget {
               itemCount: critical.length,
               separatorBuilder: (_, __) => const SizedBox(width: 12),
               itemBuilder: (_, i) =>
-                  _CriticalCard(product: critical[i]),
+                  _CriticalCard(product: sortedCritical[i]),
             ),
           ),
       ],
@@ -451,18 +546,25 @@ class _CriticalSection extends ConsumerWidget {
 //carte pour les cartes en seuil critique
 class _CriticalCard extends StatelessWidget {
   final ProductModel product;
+
   const _CriticalCard({required this.product});
 
   @override
   Widget build(BuildContext context) {
     final isOut = product.quantity == 0;
+
+    final cardColor = isOut ? const Color(0xFFDC2626) : AppColors.alertOrange;
+
     return Container(
       width: 150,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.alertOrange, width: 1.5),
+        border: Border.all(
+          color: isOut ? AppColors.errorRed : AppColors.alertOrange,
+          width: 1.5,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -470,11 +572,16 @@ class _CriticalCard extends StatelessWidget {
           Container(
             width: 48, height: 48,
             decoration: BoxDecoration(
-              color: AppColors.alertOrange.withOpacity(0.15),
+              color: isOut
+                  ? AppColors.errorRed.withOpacity(0.12)
+                  : AppColors.alertOrange.withOpacity(0.15),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.warning_amber_rounded,
-                color: AppColors.alertOrange, size: 26),
+
+            child: Icon(
+                isOut ? Icons.close_rounded : Icons.warning_amber_rounded,
+                color:cardColor,
+                size: 26),
           ),
           const SizedBox(height: 10),
           Text(
@@ -533,9 +640,12 @@ class _ExpiringSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    ref.watch(stockProvider);
-    final notifier = ref.read(stockProvider.notifier);
-    final expiring = notifier.expiringSoonList;
+    final expiring = ref.watch(stockProvider.notifier).expiringSoonList;
+    if (expiring.isEmpty) return const SizedBox.shrink();
+
+    final displayList = expiring.take(3).toList();
+    final hasMore = expiring.length > 3;
+
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -550,9 +660,19 @@ class _ExpiringSection extends ConsumerWidget {
               'Expire bientôt',
               style: AppTextStyles.h2.copyWith(
                 fontSize: 18, fontWeight: FontWeight.w800,
+                color: AppColors.primaryNavy
               ),
             ),
           ]),
+          if (hasMore)
+            TextButton(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ExpiringAllScreen()),
+              ),
+              child: Text('Voir tout (${expiring.length})',
+                  style: TextStyle(color: AppColors.indigo, fontWeight: FontWeight.bold)),
+            ),
           const SizedBox(height: 12),
           if (expiring.isEmpty)
             Text(' Aucun produit expirant bientôt',
@@ -572,14 +692,14 @@ class _ExpiringSection extends ConsumerWidget {
               child: ListView.separated(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: expiring.length,
+                itemCount: displayList.length,
                 separatorBuilder: (_, __) => Divider(
                   height: 1,
                   color: AppColors.border,
                   indent: 16, endIndent: 16,
                 ),
                 itemBuilder: (_, i) =>
-                    _ExpiringRow(product: expiring[i]),
+                    ExpiringRow(product: displayList[i]),
               ),
             ),
         ],
@@ -589,54 +709,73 @@ class _ExpiringSection extends ConsumerWidget {
 }
 
 // Ligne expiration
-class _ExpiringRow extends StatelessWidget {
+class ExpiringRow extends StatelessWidget {
   final ProductModel product;
-  const _ExpiringRow({required this.product});
+  const ExpiringRow({required this.product});
 
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
-    final daysLeft = product.expiryDate != null
-        ? ((product.expiryDate!.difference(now).inHours) / 24).ceil().clamp(0, 999)
+    final expiry = product.expiryDate;
+
+    final bool isExpired = product.isExpired;
+    final int daysLeft = expiry != null
+        ? (expiry.difference(now).inHours / 24).ceil().clamp(0, 999)
         : 0;
-    final isUrgent = daysLeft <= 2;
+
+    final Color statusColor = isExpired ? AppColors.errorRed : AppColors.alertOrange;
+
+    String badgeText;
+    if (isExpired) {
+      badgeText = 'PÉRIMÉ';
+    } else if (daysLeft == 0) {
+      badgeText = 'AUJOURD\'HUI';
+    } else {
+      badgeText = '${daysLeft}J';
+    }
 
     const monthNames = [
       'Jan','Fév','Mar','Avr','Mai','Jun',
       'Jul','Aoû','Sep','Oct','Nov','Déc'
     ];
-    final dateStr = product.expiryDate != null
-        ? 'Expire le ${product.expiryDate!.day.toString().padLeft(2,'0')} '
-        '${monthNames[product.expiryDate!.month - 1]}'
-        : 'Date inconnue';
+
+    String dateStr = 'Date inconnue';
+    if (expiry != null) {
+      dateStr = 'Expire le ${expiry.day.toString().padLeft(2, '0')} ${monthNames[expiry.month - 1]}';
+    }
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       child: Row(
         children: [
+          // Icône avec cercle de couleur
           Container(
             width: 40, height: 40,
             decoration: BoxDecoration(
-              color: isUrgent
-                  ? AppColors.errorRed.withOpacity(0.12)
-                  : AppColors.alertOrange.withOpacity(0.12),
+              color: statusColor.withOpacity(0.12),
               shape: BoxShape.circle,
             ),
             child: Icon(
-              Icons.access_time_rounded,
-              color: isUrgent ? AppColors.errorRed : AppColors.alertOrange,
+              isExpired ? Icons.dangerous : Icons.access_time_rounded,
+              color: statusColor,
               size: 20,
             ),
           ),
           const SizedBox(width: 12),
+
+          // Nom et Date
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(product.name,
-                    style: AppTextStyles.fieldLabel.copyWith(
-                      fontSize: 14, fontWeight: FontWeight.w700,
-                    )),
+                Text(
+                  product.name,
+                  style: AppTextStyles.fieldLabel.copyWith(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: isExpired ? AppColors.errorRed : AppColors.primaryNavy,
+                  ),
+                ),
                 Text(dateStr,
                     style: AppTextStyles.caption.copyWith(
                       color: AppColors.textMuted, fontSize: 12,
@@ -644,18 +783,27 @@ class _ExpiringRow extends StatelessWidget {
               ],
             ),
           ),
+
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: isUrgent ? AppColors.errorRed : AppColors.alertOrange,
+              color: statusColor,
               borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: statusColor.withOpacity(0.3),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                )
+              ],
             ),
             child: Text(
-              daysLeft == 0 ? 'Auj.' : '${daysLeft}j',
+              badgeText,
               style: AppTextStyles.caption.copyWith(
                 color: Colors.white,
-                fontWeight: FontWeight.w700,
-                fontSize: 12,
+                fontWeight: FontWeight.w900,
+                fontSize: 10,
+                letterSpacing: 0.5,
               ),
             ),
           ),
@@ -664,6 +812,136 @@ class _ExpiringRow extends StatelessWidget {
     );
   }
 }
+
+class _InboxSection extends ConsumerWidget {
+const _InboxSection();
+
+@override
+Widget build(BuildContext context, WidgetRef ref) {
+  final allProducts = ref.watch(stockProvider);
+
+  final pending = allProducts.where((p) => p.status == 'pending').toList();
+
+
+  if (pending.isEmpty) return const SizedBox.shrink();
+
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+
+            children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: AppColors.indigo,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              '${pending.length}',
+              style: AppTextStyles.caption.copyWith(
+                color: Colors.white, fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            'Produits à ranger',
+            style: AppTextStyles.h2.copyWith(
+              fontSize: 18, fontWeight: FontWeight.w800,
+              color: AppColors.primaryNavy
+            ),
+          ),
+        ]),
+        const SizedBox(height: 4),
+        Text(
+          'Achetés mais pas encore rangés dans un emplacement',
+          style: AppTextStyles.subtitle.copyWith(fontSize: 12),
+        ),
+        const SizedBox(height: 12),
+        // Liste des produits pending
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.indigo.withOpacity(0.3)),
+          ),
+          child: ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: pending.length,
+            separatorBuilder: (_, __) => Divider(
+              height: 1, color: AppColors.border, indent: 16, endIndent: 16,
+            ),
+            itemBuilder: (_, i) => _PendingRow(product: pending[i]),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+}
+
+class _PendingRow extends ConsumerWidget {
+  final ProductModel product;
+  const _PendingRow({required this.product});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return ListTile(
+
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      leading: Container(
+        width: 40, height: 40,
+        decoration: BoxDecoration(
+          color: AppColors.indigo.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: const Icon(Icons.inventory_2_outlined,
+            color: AppColors.indigo, size: 20),
+      ),
+      title: Text(product.name,
+          style: AppTextStyles.fieldLabel.copyWith(fontSize: 14)),
+      subtitle: Text(
+        'À ranger : ${product.quantity > 0 ? product.quantity.toInt() : product.idealQuantity.toInt()} ${product.unity}',
+        style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+      ),
+
+      // Bouton "Ranger" → ouvre EditBottomSheet
+      trailing: GestureDetector(
+        onTap: () => showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (_) => EditBottomSheet(product: product, ref: ref),
+        ),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppColors.indigo,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(
+            'Ranger',
+            style: AppTextStyles.caption.copyWith(
+              color: Colors.white, fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+String _formatAr(double value) {
+  final int v = value.toInt();
+  return v.toString().replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+          (Match m) => '${m[1]} '
+  );
+}
+
 
 
 
