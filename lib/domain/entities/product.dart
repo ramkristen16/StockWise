@@ -1,5 +1,6 @@
 
-//procduct model , tous ce dont nous avons besoin
+import '../../core/constants/app_constants.dart';
+
 class Product {
   final String id;
   final String name;
@@ -13,6 +14,8 @@ class Product {
   final DateTime updateAt;
   final bool isChecked;
   final double idealQuantity;
+  final String status;
+  final String householdId;
 
   Product({
     required this.id,
@@ -23,24 +26,35 @@ class Product {
     required this.unity,
     required this.threshold,
     required this.price,
-    required this.expiryDate,
+    this.expiryDate,
     required this.updateAt,
     this.isChecked = false,
     this.idealQuantity = 1.0,
+    this.status = StockStatus.active,
+    required this.householdId,
     });
   //Si la quantité est inférieur ou égale au seuil critique , fait true : il est critque sinon false
   bool get isCritical => quantity <= threshold;
 
+  bool get isExpired {
+    if (expiryDate == null) return false;
+    return expiryDate!.isBefore(DateTime.now());
+  }
+
+
   //si il reste que 0 à 3 entre la date d'expiration est aujourd'hui , fait true : il va bientot s'expirer sinon false
   bool get isExpiringSoon {
-    DateTime aujourdhui = DateTime.now();
-    int jourRestants = expiryDate!.difference(aujourdhui).inDays;
-    if (jourRestants >= 0 && jourRestants <= 3){
-      return true;
-    }
-    else {
-      return false;
-    }
+    final date = expiryDate;
+    if (date == null) return false;
+
+    final maintenant = DateTime.now();
+
+    final aujourdhui = DateTime(maintenant.year, maintenant.month, maintenant.day);
+    final dateExpiration = DateTime(date.year, date.month, date.day);
+
+    final jourRestants = dateExpiration.difference(aujourdhui).inDays;
+
+    return jourRestants >= 0 && jourRestants <= 3;
   }
 
 }

@@ -6,6 +6,8 @@ class ProductCategory {
   static const String energie = 'Energie';
   static const String sante = 'Santé';
   static const String autre = 'Autre';
+  static String get homeIcon => 'assets/Icon/garde.svg';
+
 
   //liste complète des catégories
  static const List<String> all = [
@@ -13,18 +15,25 @@ class ProductCategory {
  ];
 
  //Icone par catégories
-static String iconOf(String category) {
-  switch (category) {
-    case alimentaire: return'🥗';
-    case hygiene:     return '🧴';
-    case entretien:   return '🧹';
-    case energie:     return '⚡';
-    case sante:       return '💊';
-    case autre: return '📦';
-    default:          return '📦';
-
+  static String iconOf(String category) {
+    switch (category) {
+      case alimentaire:
+        return 'assets/Icon/alimentaire.svg';
+      case hygiene:
+        return 'assets/Icon/hygiene.svg';
+      case entretien:
+        return 'assets/Icon/entretien.svg';
+      case energie:
+        return 'assets/Icon/energie.svg';
+      case sante:
+        return 'assets/Icon/sante.svg';
+      case autre:
+        return 'assets/Icon/autre.svg';
+      default:
+        return 'assets/Icon/autre.svg';
+    }
   }
- }
+
 }
 
 class ProductLocation {
@@ -42,16 +51,17 @@ class ProductLocation {
 
   static String iconOf(String location) {
     switch (location) {
-      case define:return '❓';
-      case frigo: return '🧊';
-      case congelateur:    return '❄️';
-      case placard: return '🚪';
-      case gardeManger:    return '🏠';
-      case salleDeBain:    return '🚿';
-      case autre: return '📍';
-      default:             return '📍';
+      case define:       return 'assets/Icon/define.svg';
+      case frigo:        return 'assets/Icon/fridge.svg';
+      case congelateur:  return 'assets/Icon/frigo.svg';
+      case placard:      return 'assets/Icon/placard.svg';
+      case gardeManger:  return 'assets/Icon/garde.svg';
+      case salleDeBain:  return 'assets/Icon/shower.svg';
+      case autre:        return 'assets/Icon/fluent-emoji-flat_round-pushpin.svg';
+      default:           return 'assets/Icon/fluent-emoji-flat_round-pushpin.svg';
     }
   }
+
 }
 
 class MemberRole {
@@ -93,5 +103,8 @@ class StockStatus {
 
 
 class ProductUnits {
-  static const List<String> all = ['pcs', 'kg', 'L', 'sac', 'paquet'];
+  static const List<String> units =[
+    'unités', 'kg', 'g', 'L', 'mL', 'pcs',
+    'boîte', 'sachet', 'bouteille', 'rouleau', 'plaquette'
+  ] ;
 }

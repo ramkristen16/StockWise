@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import '../../../core/constants/app_constants.dart';
+import '../../../core/constants/category_icon.dart';
+import '../../../core/navigation/app_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_textStyle.dart';
 import '../../../data/models/product_model.dart';
@@ -30,37 +31,43 @@ class ShoppingListScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Column(children: [
-        _ShoppingHeader(
-          topPad: topPad,
-          checkedCount: checkedCount,
-          total: list.length,
-        ),
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 160),
-            itemCount: list.length + 1,
-            itemBuilder: (context, i) {
-              if (i == 0) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12.0),
-                  child: _AddProductButton(
-                    onTap: () => _showQuickAddDialog(context, ref),
-                  ),
-                );
-              }
-
-              final product = list[i - 1];
-              return _ShoppingItem(
-                product: product,
-                onEdit: () => _showEditBottomSheet(context, ref, product),
-              );
-            },
+      body: Column(
+        children: [
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              _ShoppingHeader(
+                topPad: topPad,
+                checkedCount: checkedCount,
+                total: list.length,
+              ),
+              Positioned(
+                bottom: -28,
+                left: 16,
+                right: 16,
+                child: _AddProductButton(
+                  onTap: () => _showQuickAddDialog(context, ref),
+                ),
+              ),
+            ],
           ),
-        ),
+          const SizedBox(height: 32),
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 160),
+              itemCount: list.length,
+              itemBuilder: (context, i) {
+                final product = list[i];
+                return _ShoppingItem(
+                  product: product,
+                  onEdit: () => _showEditBottomSheet(context, ref, product),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
 
-
-      ]),
       bottomSheet: _ShoppingFooter(
         estimatedTotal:  estimatedTotal,
         checkedTotal:    checkedTotal,
@@ -90,7 +97,7 @@ class ShoppingListScreen extends ConsumerWidget {
       builder: (_) => EditBottomSheet(product: product, ref: ref),
     );
   }
-
+//le dialogue rapide pour l'ajout uniquement dans shoppingliste mais pas dans le stock
 void _showQuickAddDialog(BuildContext context, WidgetRef ref) {
   final nameCtrl = TextEditingController();
   final priceCtrl = TextEditingController();
@@ -98,25 +105,91 @@ void _showQuickAddDialog(BuildContext context, WidgetRef ref) {
   showDialog(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: const Text('Ajout rapide au panier'),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Text(
+        'Ajout rapide',
+        style: AppTextStyles.h2.copyWith(fontSize: 18, color: AppColors.primaryNavy),
+      ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Nom du produit')),
-          TextField(controller: priceCtrl, decoration: const InputDecoration(labelText: 'Prix estimé (Ar)'), keyboardType: TextInputType.number),
+          TextField(
+            controller: nameCtrl,
+            autofocus: true,
+            decoration: InputDecoration(
+              labelText: 'Nom du produit',
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: priceCtrl,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(
+              labelText: 'Prix estimé',
+              suffixText: 'Ar',
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
         ],
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
+        TextButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: Text('Annuler', style: TextStyle(color: AppColors.textMuted)),
+        ),
         ElevatedButton(
-          onPressed: () {
-            if (nameCtrl.text.isNotEmpty) {
-              final price = double.tryParse(priceCtrl.text) ?? 0.0;
-              ref.read(stockProvider.notifier).addNewProductToShoppingList(nameCtrl.text, price);
-              Navigator.pop(ctx);
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.indigo,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+          onPressed: () async {
+            final name = nameCtrl.text.trim();
+            final price = double.tryParse(priceCtrl.text) ?? 0.0;
+
+            if (name.isNotEmpty) {
+              //on vérifie si le produit existe déjà dans stock
+              final products = ref.read(stockProvider);
+              final existing = products.firstWhere(
+                    (p) => p.name.toLowerCase().trim() == name.toLowerCase(),
+                orElse: () => ProductModel.empty(),
+              );
+
+              // Si le produit existe déjà et qu'il reste du stock
+              if (existing.id.isNotEmpty && existing.quantity > 0) {
+                Navigator.pop(ctx);
+
+                // on affiche l'alerte de confirmation pour éviter au gaspillage
+                final bool confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    title: const Text('Déjà en stock !'),
+                    content: Text(
+                        'Il vous reste encore ${existing.quantity.toStringAsFixed(0)} ${existing.unity} de "$name".\nVoulez-vous quand même en racheter ?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('Non'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text('Oui, ajouter'),
+                      ),
+                    ],
+                  ),
+                ) ?? false;
+
+                if (!confirm) return;
+              } else {
+                Navigator.pop(ctx);
+              }
+
+              await ref.read(stockProvider.notifier).addNewProductToShoppingList(name, price);
             }
           },
-          child: const Text('Ajouter'),
+          child: const Text('Ajouter au panier'),
         ),
       ],
     ),
@@ -124,9 +197,8 @@ void _showQuickAddDialog(BuildContext context, WidgetRef ref) {
 }
 
 
-
   //header
-class _ShoppingHeader extends StatelessWidget {
+class _ShoppingHeader extends ConsumerWidget {
   final double topPad;
   final int checkedCount;
   final int total;
@@ -138,11 +210,11 @@ class _ShoppingHeader extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Container(
       padding: EdgeInsets.only(
         top: topPad + 16,
-        left: 20, right: 20, bottom: 20,
+        left: 20, right: 20, bottom:40
       ),
       decoration: const BoxDecoration(
         color: Color(0xFF1E293B),
@@ -154,7 +226,10 @@ class _ShoppingHeader extends StatelessWidget {
       child: Row(
         children: [
           GestureDetector(
-            onTap: () => Navigator.of(context).pop(),
+            onTap: () {
+              ref.read(navIndexProvider.notifier).state = 0;
+
+            },
             child: const Icon(Icons.arrow_back, color: Colors.white, size: 22),
           ),
           const SizedBox(width: 12),
@@ -281,9 +356,9 @@ class _ShoppingItem extends ConsumerWidget {
         ),
         title: Row(
           children: [
-            Text(
-              ProductCategory.iconOf(product.category),
-              style: const TextStyle(fontSize: 20),
+            CategoryIcon(
+              path: ProductCategory.iconOf(product.category),
+              size: 24,
             ),
             const SizedBox(width: 8),
             Expanded(
@@ -414,9 +489,9 @@ class _EditBottomSheetState extends State<EditBottomSheet> {
           const SizedBox(height: 20),
           Row(
             children: [
-              // quantité
+
               Expanded(
-                flex: 2, // Plus large
+                flex: 2,
                 child: _InputField(
                   label: 'Quantité',
                   controller: _qtyController,
@@ -425,7 +500,6 @@ class _EditBottomSheetState extends State<EditBottomSheet> {
                 ),
               ),
               const SizedBox(width: 12),
-              // unité
               Expanded(
                 flex: 1,
                 child: Column(
@@ -445,10 +519,11 @@ class _EditBottomSheetState extends State<EditBottomSheet> {
                         child: DropdownButton<String>(
                           value: _selectedUnit,
                           isExpanded: true,
-                          items: ['pcs', 'kg', 'L', 'sac', 'paquet, boite'].map((u) =>
+                          items: ProductUnits.units.map((u) =>
+
                               DropdownMenuItem(value: u, child: Text(u, style: const TextStyle(fontSize: 13)))
                           ).toList(),
-                          onChanged: (v) => setState(() => _selectedUnit = v!),
+                          onChanged: (v) => setState(() => _selectedUnit = v as String),
                         ),
                       ),
                     ),
@@ -488,7 +563,12 @@ class _EditBottomSheetState extends State<EditBottomSheet> {
                     value: loc,
                     child: Row(
                       children: [
-                        Text(ProductLocation.iconOf(loc)),
+                        CategoryIcon(
+                          path: ProductLocation.iconOf(loc),
+                          size: 22,
+
+
+                        ),
                         const SizedBox(width: 8),
                         Text(loc),
                       ],
@@ -565,35 +645,27 @@ class _EditBottomSheetState extends State<EditBottomSheet> {
                   borderRadius: BorderRadius.circular(16),
                 ),
               ),
-              onPressed: () async {
-                try {
-                  final qty = double.tryParse(_qtyController.text) ?? widget.product.idealQuantity;
-                  print("Prix saisi dans le champ : ${_priceController.text}");
-                  final price = double.tryParse(_priceController.text) ?? widget.product.price;
-                  print("DEBUG: Prix converti en nombre = $price");
+              onPressed: () {
+                final qty = double.tryParse(_qtyController.text) ?? widget.product.idealQuantity;
+                final price = double.tryParse(_priceController.text) ?? widget.product.price;
 
-                  final updated = widget.product.copyWith(
-                    idealQuantity: qty,
-                    unity: _selectedUnit,
-                    price: price,
-                    location: _selectedLocation,
-                    expiryDate: _selectedDate,
-                    status: _selectedLocation == ProductLocation.define
-                        ? StockStatus.pending
-                        : StockStatus.active,
-                  );
+                final updated = widget.product.copyWith(
+                  idealQuantity: qty,
+                  unity: _selectedUnit,
+                  price: price,
+                  location: _selectedLocation,
+                  expiryDate: _selectedDate,
+                  status: _selectedLocation == ProductLocation.define
+                      ? StockStatus.pending
+                      : StockStatus.active,
+                  updateAt: DateTime.now(),
+                );
 
-                  await widget.ref
-                      .read(stockProvider.notifier)
-                      .addOrUpdateProduct(updated);
+                Navigator.pop(context);
 
-                  if (context.mounted) {
-                    Navigator.of(context).pop(); // Ferme le BottomSheet
-                  }
-                } catch (e) {
-                  debugPrint("Erreur lors de la confirmation : $e");
-                }
+                widget.ref.read(stockProvider.notifier).addOrUpdateProduct(updated);
               },
+
               child: const Text(
                 'Confirmer',
                 style: TextStyle(
@@ -709,7 +781,7 @@ class _ShoppingFooter extends StatelessWidget {
         ],
       ),
         const SizedBox(height: 4),
-      // Panier sélectionné (gros, visible)
+
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [

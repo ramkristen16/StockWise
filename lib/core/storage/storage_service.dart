@@ -5,6 +5,9 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:stock_wise/data/models/product_model.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../../data/models/household_model.dart';
+import '../../data/models/user_model.dart';
+
 
 class StorageService {
   static const _secureStorage = FlutterSecureStorage();
@@ -25,20 +28,31 @@ class StorageService {
   static Future<void> init() async {
     await Hive.initFlutter();
 
-  if(!Hive.isAdapterRegistered(0)){
-    Hive.registerAdapter(ProductModelAdapter());
-  }
-  final encryptionKey = await getEncryptionKey();
+    if (!Hive.isAdapterRegistered(0)) Hive.registerAdapter(ProductModelAdapter());
+    if (!Hive.isAdapterRegistered(1)) Hive.registerAdapter(UserModelAdapter());
+    if (!Hive.isAdapterRegistered(2)) Hive.registerAdapter(HouseholdModelAdapter());
+
+
+    final encryptionKey = await getEncryptionKey();
+
+    final cipher = HiveAesCipher(encryptionKey);
+
+
  //ouverture de la boite Hive pour les produits
-  await Hive.openBox<ProductModel>(
-      'productsBox',
-      encryptionCipher: HiveAesCipher(encryptionKey),
-    );
-  //ouverture de la boite pour les paramètres
-  await Hive.openBox<ProductModel>(
-      'settingsBox',
-      encryptionCipher: HiveAesCipher(encryptionKey),
-    );
+    await Hive.openBox<ProductModel>(
+        'productsBox',
+        encryptionCipher: cipher);
+  // ouverture de la boite pour les users
+    await Hive.openBox<UserModel>(
+        'userBox',
+        encryptionCipher: cipher);
+  //ouverture de la boite pour le household
+    await Hive.openBox<HouseholdModel>(
+        'householdBox',
+        encryptionCipher: cipher);
+
+    //ouverture de la boite pour les paramètres
+    await Hive.openBox('settingsBox', encryptionCipher: cipher);
 
     print('Base de donnée (Stok +foyer) chiffrée et prete!');
   }

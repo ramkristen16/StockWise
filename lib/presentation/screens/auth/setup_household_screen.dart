@@ -22,7 +22,7 @@ class SetupHouseholdScreen  extends StatelessWidget{
 
               const Icon(Icons.house_siding_rounded, size: 80, color: AppColors.indigo),
               const SizedBox(height: 32),
-              Text('Bienvenue !', style: AppTextStyles.h1),
+              Text('Bienvenue !', style: AppTextStyles.h1,selectionColor: AppColors.primaryNavy),
               const SizedBox(height: 12),
               const Text(
                 'Pour commencer, configurez votre foyer familial.',

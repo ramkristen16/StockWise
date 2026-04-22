@@ -12,7 +12,6 @@ import 'package:stock_wise/presentation/screens/stock/stock_screen.dart';
 
 final navIndexProvider = StateProvider<int>((ref) => 0);
 
-//capable d'écouter Riverpod
 class MainScaffold extends ConsumerWidget {
   const MainScaffold({super.key});
   static const List<Widget> _screens = [

@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
 import 'package:stock_wise/presentation/viewmodels/stock_provider.dart';
-
 import '../../../core/constants/app_constants.dart';
+import '../../../core/constants/category_icon.dart';
+import '../../../core/navigation/app_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_textStyle.dart';
 import '../../../data/models/product_model.dart';
+import '../product/add_product_screen.dart';
+import 'package:intl/intl.dart';
+
 
 class StockScreen extends ConsumerWidget {
   const StockScreen({super.key});
@@ -71,6 +74,7 @@ class _StockHeader extends ConsumerWidget {
     final products = ref.watch(filteredProductsProvider);
     final total = products.length;
     final faibles = products.where((p) => p.isCritical && p.quantity > 0).length;
+    final ruptures = products.where((p) => p.quantity == 0).length;
 
     return Container(
       padding: EdgeInsets.only(
@@ -90,7 +94,10 @@ class _StockHeader extends ConsumerWidget {
           Row(
             children: [
               GestureDetector(
-                onTap: () => Navigator.of(context).pop(),
+                onTap: () {
+                  ref.read(navIndexProvider.notifier).state = 0;
+
+                },
                 child: const Icon(Icons.arrow_back, color: Colors.white, size: 22),
               ),
               const SizedBox(width: 12),
@@ -115,6 +122,27 @@ class _StockHeader extends ConsumerWidget {
                           fontSize: 13,
                         ),
                       ),
+
+                      if (ruptures > 0) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          width: 6, height: 6,
+                          decoration: const BoxDecoration(
+                            color: AppColors.errorRed,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '$ruptures vide',
+                          style: AppTextStyles.subtitle.copyWith(
+                            color: AppColors.errorRed,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+
                       if (faibles > 0) ...[
                         const SizedBox(width: 6),
                         Container(
@@ -143,7 +171,7 @@ class _StockHeader extends ConsumerWidget {
                   color: Colors.white.withOpacity(0.18),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.tune_rounded, color: Colors.white, size: 22),
+                child: const Icon(Icons.inventory_2_rounded, color: Colors.white, size: 22),
               ),
             ],
           ),
@@ -212,6 +240,13 @@ class _CategoryBar extends ConsumerWidget {
                 decoration: BoxDecoration(
                   color: isSelected ? AppColors.indigo : Colors.white,
                   borderRadius: BorderRadius.circular(14),
+
+                  border: Border.all(
+                    color: isSelected
+                        ? Colors.transparent
+                        : AppColors.border,
+                    width: 1,
+                  ),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.05),
@@ -220,9 +255,11 @@ class _CategoryBar extends ConsumerWidget {
                   ],
                 ),
                 child: Row(children: [
-                  Text(
-                    cat == 'Tout' ? '🏠' : ProductCategory.iconOf(cat),
-                    style: const TextStyle(fontSize: 16),
+                  CategoryIcon(
+                    path: cat == 'Tout'
+                        ? 'assets/Icon/tout.svg'
+                        : ProductCategory.iconOf(cat),
+                    size: 22,
                   ),
                   const SizedBox(width: 6),
                   Text(
@@ -248,155 +285,311 @@ class _ProductCard extends ConsumerWidget {
   final ProductModel product;
   const _ProductCard({required this.product});
 
+
+  Widget _buildExpiryBadge() {
+    if (product.expiryDate == null) return const SizedBox.shrink();
+
+    final bool expired = product.isExpired;
+    final bool soon    = product.isExpiringSoon && !expired;
+    final now = DateTime.now();
+    final diff = product.expiryDate!.difference(now);
+    final daysLeft = diff.inHours > 0
+        ? (diff.inHours / 24).ceil()
+        : 0;
+
+    if (!expired && !soon) return const SizedBox.shrink();
+    return Padding(
+        padding: const EdgeInsets.only(top: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              expired ? Icons.dangerous_rounded : Icons.access_time_rounded,
+              size: 12,
+              color: expired ? AppColors.errorRed : AppColors.alertOrange,
+            ),
+            const SizedBox(width: 3),
+            Flexible(
+              child: Text(
+                expired
+                    ? 'PÉRIMÉ'
+                    : daysLeft == 0
+                    ? 'Expire auj.'
+                    : 'Dans ${daysLeft}j',
+
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: expired ? AppColors.errorRed : AppColors.alertOrange,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+
+            ),
+          ],
+        ),
+    );
+
+  }
+
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final notifier = ref.read(stockProvider.notifier);
     final bool outOfStock = product.quantity == 0;
+    final bool isExpired = product.isExpired;
+    final bool isSoon = product.isExpiringSoon;
+
     final bool isCritical = product.isCritical && !outOfStock;
 
-    Color borderColor = Colors.transparent;
-    if (outOfStock) borderColor = AppColors.errorRed;
-    else if (isCritical) borderColor = AppColors.alertOrange;
+    String alertLabel = '';
+    bool showStatus = false;
+    bool statusIsRupture = false;
+
+
+    if (outOfStock) {
+      alertLabel = 'Rupture';
+      showStatus = true;
+      statusIsRupture = true;
+    } else if (isExpired) {
+      alertLabel = 'Produit Périmé';
+      showStatus = true;
+      statusIsRupture = true;
+    } else if (isSoon) {
+      alertLabel = 'Périme Bientôt';
+      showStatus = true;
+      statusIsRupture = false;
+    } else if (isCritical) {
+      alertLabel = 'Stock Faible';
+      showStatus = true;
+      statusIsRupture = false;
+    }
+
+
+
+
+    Color borderColor = AppColors.border;
+    if (outOfStock || isExpired) borderColor = AppColors.errorRed;
+    else if (isCritical || isSoon) borderColor = AppColors.alertOrange;
 
     final categoryTheme = AppColors.getCategoryTheme(product.category);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: borderColor,
-          width: borderColor == Colors.transparent ? 0 : 2,
+    return GestureDetector(
+      onLongPress: () => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => AddProductScreen(productEdit: product),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Badge catégorie
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: categoryTheme['bg'],
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                '${ProductCategory.iconOf(product.category)} ${product.category}',
-                style: AppTextStyles.caption.copyWith(
-                  color: categoryTheme['text'],
-                  fontWeight: FontWeight.w600,
-                  fontSize: 10,
-                ),
-              ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: borderColor,
+            width: (borderColor == AppColors.errorRed || borderColor == AppColors.alertOrange) ? 2 : 1,
+      
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 2),
             ),
-            const SizedBox(height: 8),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Badge catégorie
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: categoryTheme['bg'],
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CategoryIcon(path: ProductCategory.iconOf(product.category), size: 16),
+                        const SizedBox(width: 4),
+                        Text(
+                          product.category,
+                          style: AppTextStyles.caption.copyWith(
+                            color: categoryTheme['text'],
+                            fontWeight: FontWeight.w600,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ],
+                    ),
 
-            // Nom
-            Text(
-              product.name,
-              style: AppTextStyles.fieldLabel.copyWith(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 2),
-
-            // Emplacement avec icône
-            Text(
-              '${ProductLocation.iconOf(product.location)} ${product.location}',
-              style: AppTextStyles.subtitle.copyWith(
-                color: AppColors.indigo,
-                fontSize: 12,
-              ),
-            ),
-
-            const Spacer(),
-
-            // Quantité
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  '${product.quantity.toStringAsFixed(product.quantity % 1 == 0 ? 0 : 1)}',
-                  style: AppTextStyles.h2.copyWith(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w800,
-                    color: outOfStock
-                        ? AppColors.errorRed
-                        : isCritical
-                        ? AppColors.alertOrange
-                        : AppColors.foreground,
                   ),
-                ),
-                const SizedBox(width: 4),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
-                  child: Text(
-                    '/${product.threshold}',
-                    style: AppTextStyles.caption.copyWith(
-                      color: AppColors.textMuted,
-                      fontSize: 13,
+                  GestureDetector(
+                    onTap: () => _showDeleteDialog(context, ref),
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: AppColors.errorRed.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.delete_outline,
+                        size: 16,
+                        color: AppColors.errorRed,
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-            Text(
-              product.unity ?? 'unités',
-              style: AppTextStyles.caption.copyWith(
-                color: AppColors.textMuted,
-                fontSize: 11,
+                ],
               ),
-            ),
-
-            const SizedBox(height: 10),
-
-            // Boutons +/-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _QtyButton(
-                  icon: Icons.remove,
-                  onTap: () => notifier.consumeOne(product),
+              const SizedBox(height: 8),
+      
+              // Nom
+              Text(
+                product.name,
+                style: AppTextStyles.fieldLabel.copyWith(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
                 ),
-                _QtyButton(
-                  icon: Icons.add,
-                  isAdd: true,
-                  onTap: () => notifier.incrementOne(product),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 1),
+
+              _buildExpiryBadge(),
+
+              const SizedBox(height: 2),
+
+
+              // Emplacement avec icône
+              Row(
+                children: [
+                  CategoryIcon(
+                    path: ProductLocation.iconOf(product.location),
+                    size: 16,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    product.location,
+                    style: AppTextStyles.subtitle.copyWith(
+                      color: AppColors.indigo, fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+      
+              const Spacer(),
+      
+              // Quantité
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '${product.quantity.toStringAsFixed(product.quantity % 1 == 0 ? 0 : 1)}',
+                    style: AppTextStyles.h2.copyWith(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                      color: outOfStock
+                          ? AppColors.errorRed
+                          : isCritical
+                          ? AppColors.alertOrange
+                          : AppColors.foreground,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Text(
+                      '/${product.threshold}',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.textMuted,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              Text(
+                product.unity ?? 'unités',
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.textMuted,
+                  fontSize: 11,
+                ),
+              ),
+      
+              const SizedBox(height: 8),
+      
+              // Boutons +/-
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                
+                  _QtyButton(
+                    icon: Icons.add,
+                    onTap: () => notifier.incrementOne(product),
+                  ),
+                  _QtyButton(
+                    icon: Icons.remove,
+                    isMin: true,
+                    onTap: () =>_showConsumeDialog(context, ref,product),
+                  ),
+      
+                ],
+              ),
+
+
+              // Badge statut
+              if (showStatus) ...[
+                const SizedBox(height: 4),
+                _StatusBadge(
+                  isRupture: statusIsRupture,
+                  label: alertLabel,
                 ),
               ],
-            ),
 
-            // Badge statut
-            if (outOfStock || isCritical) ...[
-              const SizedBox(height: 8),
-              _StatusBadge(isRupture: outOfStock),
             ],
-          ],
+          ),
         ),
       ),
     );
   }
+  void _showDeleteDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Supprimer ?'),
+        content: Text('Voulez-vous vraiment retirer "${product.name}" de votre stock ?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annuler'),
+          ),
+          TextButton(
+            onPressed: () {
+              ref.read(stockProvider.notifier).removeProduct(product.id);
+              Navigator.pop(context);
+            },
+            child: Text('Supprimer', style: TextStyle(color: AppColors.errorRed)),
+          ),
+        ],
+      ),
+    );
+  }
+
 }
 
 // Bouton quantité +/-
 class _QtyButton extends StatelessWidget {
   final IconData icon;
-  final bool isAdd;
+  final bool isMin;
   final VoidCallback onTap;
   const _QtyButton({
     required this.icon,
-    this.isAdd = false,
+    this.isMin = false,
     required this.onTap,
   });
 
@@ -406,14 +599,52 @@ class _QtyButton extends StatelessWidget {
     child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: isAdd ? AppColors.indigo : AppColors.background,
+        color: isMin ? AppColors.indigo : AppColors.background,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Icon(
         icon,
-        color: isAdd ? Colors.white : AppColors.foreground,
+        color: isMin ? Colors.white : AppColors.foreground,
         size: 18,
       ),
+    ),
+  );
+}
+
+
+//pour le popUp si c'est pas 1 que retire
+void _showConsumeDialog(BuildContext context, WidgetRef ref, ProductModel product) {
+  final TextEditingController _amountController = TextEditingController();
+
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Text("Consommer ${product.name}"),
+      content: TextField(
+        controller: _amountController,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        autofocus: true,
+        decoration: InputDecoration(
+          hintText: "Quantité à retirer",
+
+          suffixText: product.unity ?? 'unités',
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text("Annuler", style: TextStyle(color: AppColors.primaryNavy),)),
+        ElevatedButton(
+          onPressed: () {
+            final val = double.tryParse(_amountController.text) ?? 0;
+            if (val > 0) {
+              ref.read(stockProvider.notifier).consumeAmount(product, val);
+              Navigator.pop(context);
+            }
+          },
+          child: const Text("Valider",style: TextStyle(color: AppColors.indigo),),
+        ),
+      ],
     ),
   );
 }
@@ -421,7 +652,8 @@ class _QtyButton extends StatelessWidget {
 // Badge rupture ; stock faible
 class _StatusBadge extends StatelessWidget {
   final bool isRupture;
-  const _StatusBadge({required this.isRupture});
+  final String label;
+  const _StatusBadge({required this.isRupture,   required this.label,});
 
   @override
   Widget build(BuildContext context) => Container(
@@ -443,7 +675,7 @@ class _StatusBadge extends StatelessWidget {
         ),
         const SizedBox(width: 4),
         Text(
-          isRupture ? 'Rupture' : 'Stock Faible',
+          label,
           style: AppTextStyles.caption.copyWith(
             color: isRupture ? Colors.white : AppColors.alertOrange,
             fontWeight: FontWeight.w700,
@@ -476,7 +708,7 @@ class _EmptyState extends StatelessWidget {
     ),
   );
 }
-//pour voir seulement les stocks critiques depuis dahsboard
+//pour voir seulement les stocks critiques depuis dashboard
 class _CriticalFilterBanner extends StatelessWidget {
   final VoidCallback onClear;
   const _CriticalFilterBanner({required this.onClear});
@@ -492,7 +724,7 @@ class _CriticalFilterBanner extends StatelessWidget {
     ),
     child: Row(children: [
       const Icon(Icons.filter_list_rounded,
-          color: AppColors.alertOrange, size: 16),
+          color: AppColors.successGreen, size: 16),
       const SizedBox(width: 8),
       Expanded(
         child: Text(
@@ -509,7 +741,7 @@ class _CriticalFilterBanner extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
-            color: AppColors.alertOrange,
+            color: AppColors.successGreen,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
