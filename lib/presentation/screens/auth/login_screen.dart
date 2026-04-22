@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_textStyle.dart';
 import '../../viewmodels/auth_provider.dart';
 
@@ -121,14 +122,13 @@ class LoginScreen extends ConsumerWidget {
       ),
       child: Column(
         children: [
-          Text('Bienvenue', style: AppTextStyles.h2.copyWith(fontSize: 22, fontWeight: FontWeight.w800)),
+          Text('Bienvenue', style: AppTextStyles.h2.copyWith(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.primaryNavy)),
           const SizedBox(height: 8),
           Text('Connectez-vous pour commencer',
               textAlign: TextAlign.center,
               style: AppTextStyles.subtitle.copyWith(color: const Color(0xFF64748B))),
           const SizedBox(height: 32),
 
-          // bouton google
           _GoogleButton(isLoading: isLoading, ref: ref, context: context),
 
           const SizedBox(height: 24),

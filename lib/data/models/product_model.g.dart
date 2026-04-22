@@ -29,13 +29,15 @@ class ProductModelAdapter extends TypeAdapter<ProductModel> {
       updateAt: fields[9] as DateTime,
       isChecked: fields[10] as bool,
       idealQuantity: fields[11] as double,
+      status: fields[12] as String,
+      householdId: fields[13] as String,
     );
   }
 
   @override
   void write(BinaryWriter writer, ProductModel obj) {
     writer
-      ..writeByte(12)
+      ..writeByte(14)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -59,7 +61,11 @@ class ProductModelAdapter extends TypeAdapter<ProductModel> {
       ..writeByte(10)
       ..write(obj.isChecked)
       ..writeByte(11)
-      ..write(obj.idealQuantity);
+      ..write(obj.idealQuantity)
+      ..writeByte(12)
+      ..write(obj.status)
+      ..writeByte(13)
+      ..write(obj.householdId);
   }
 
   @override

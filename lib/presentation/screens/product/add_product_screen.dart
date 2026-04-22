@@ -1,6 +1,5 @@
 
 import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:stock_wise/core/constants/app_constants.dart';
@@ -11,13 +10,14 @@ import 'package:stock_wise/presentation/screens/product/scann_screen.dart';
 import 'package:stock_wise/presentation/viewmodels/stock_provider.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../core/constants/category_icon.dart';
 import '../../../core/navigation/app_router.dart';
 import '../../../core/theme/app_colors.dart';
-import '../stock/stock_screen.dart';
 
 class AddProductScreen extends ConsumerStatefulWidget {
   final ProductModel? productEdit ;
-  const AddProductScreen({super.key, this.productEdit});
+  final bool fromShopping;
+  const AddProductScreen({super.key, this.productEdit, this.fromShopping = false});
 
   @override
   ConsumerState<AddProductScreen> createState() => _AddProductScreenState();
@@ -81,8 +81,11 @@ class AddProductScreen extends ConsumerStatefulWidget {
      setState(() => _isLoading = false);
 
      if (!mounted) return;
+
      if (result == null) {
-       _snack('Vérifiez votre connexion internet', err: true);
+       _snack('Le service de scan est indisponible (Erreur serveur)', err: true);
+     } else if (result['error'] != null) {
+       _snack('Erreur : ${result['error']}', err: true);
      } else if (result['notFound'] == true) {
        _snack('Produit inconnu - remplissez manuellement');
      } else {
@@ -92,12 +95,64 @@ class AddProductScreen extends ConsumerStatefulWidget {
        });
        _snack('Produit trouvé : ${result['name']}');
      }
+
    }
     //sauvegarde
    Future<void> _save() async {
+     FocusScope.of(context).unfocus();
+
+     final notifierId = ref.read(stockProvider.notifier).householdId;
+     final currentHouseholdId = notifierId.isNotEmpty
+         ? notifierId
+         : (widget.productEdit?.householdId ?? '');
+
+     if (currentHouseholdId.isEmpty) {
+       _snack("Erreur : Aucun foyer détecté.", err: true);
+       return;
+     }
+
      if (_nameController.text.trim().isEmpty) {
        _snack('Nom obligatoire', err: true);
        return;
+     }
+
+     if (!_isEditMode) {
+       final existing = ref.read(stockProvider).firstWhere(
+             (p) => p.name.toLowerCase().trim() == _nameController.text.toLowerCase().trim(),
+         orElse: () => ProductModel.empty(),
+       );
+
+       if (existing.id.isNotEmpty) {
+         final shouldMerge = await showDialog<bool>(
+           context: context,
+           builder: (_) => AlertDialog(
+             title: const Text('Produit existant'),
+             content: Text('Voulez-vous ajouter la quantité à "${existing.name}" ?'),
+             actions: [
+               TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Non')),
+               ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Oui')),
+             ],
+           ),
+         );
+
+         if (shouldMerge != true) return;
+
+         final newQty = (double.tryParse(_quantityController.text) ?? 1.0);
+         final merged = existing.copyWith(
+           quantity: existing.quantity + newQty,
+           updateAt: DateTime.now(),
+         );
+
+         setState(() => _isLoading = true);
+         await ref.read(stockProvider.notifier).addOrUpdateProduct(merged);
+         if (!mounted) return;
+         setState(() => _isLoading = false);
+
+         _snack('Quantité ajoutée ✓');
+
+         ref.read(navIndexProvider.notifier).state = 1;
+         return;
+       }
      }
 
      final p = ProductModel(
@@ -105,31 +160,30 @@ class AddProductScreen extends ConsumerStatefulWidget {
        name: _nameController.text.trim(),
        category: _selectedCategory,
        location: _selectedLocation,
-       quantity: double.tryParse(_quantityController.text) ?? 1.0,
+       quantity: widget.fromShopping ? 0.0 : (double.tryParse(_quantityController.text) ?? 1.0),
        unity: _unitController.text.trim().isEmpty ? 'unités' : _unitController.text.trim(),
        price: double.tryParse(_priceController.text) ?? 0.0,
-       threshold: int.tryParse(_thresholdController.text) ?? 3,
+       threshold: double.tryParse(_thresholdController.text.replaceAll(',', '.'))?.toInt() ?? 3,
        expiryDate: _expiryDate,
        updateAt: DateTime.now(),
+       idealQuantity: double.tryParse(_quantityController.text) ?? 1.0,
+       householdId: currentHouseholdId,
      );
 
      setState(() => _isLoading = true);
-
      await ref.read(stockProvider.notifier).addOrUpdateProduct(p);
-
+     if (!mounted) return;
      setState(() => _isLoading = false);
 
-     if (!mounted) return;
+     _snack(_isEditMode ? 'Produit modifié ✓' : "Ajouté ✓");
 
-     _snack(_isEditMode ? 'Produit modifié ✓' : "Ajouté à l'inventaire ✓");
-
-     //1 : index de stock
-     ref.read(navIndexProvider.notifier).state = 1;
-
-     if (_isEditMode) {
+     if (_isEditMode || widget.fromShopping) {
        Navigator.of(context).pop();
+     } else {
+       ref.read(navIndexProvider.notifier).state = 1;
      }
    }
+
    //date
    Future<void> _pickDate() async {
      final d = await showDatePicker(
@@ -218,7 +272,14 @@ class AddProductScreen extends ConsumerStatefulWidget {
                crossAxisAlignment: CrossAxisAlignment.start,
                children: [
                  GestureDetector(
-                   onTap: () => Navigator.of(context).pop(),
+                   onTap: () {
+                     ref.read(navIndexProvider.notifier).state = 0;
+
+                     if (Navigator.of(context).canPop()) {
+                       Navigator.of(context).pop();
+                     }
+                   },
+
                    child: const Icon(Icons.arrow_back, color: Colors.white, size: 22),
                  ),
                  const SizedBox(width: 12),
@@ -250,7 +311,7 @@ class AddProductScreen extends ConsumerStatefulWidget {
                      color: Colors.white.withOpacity(0.18),
                      borderRadius: BorderRadius.circular(14),
                    ),
-                   child: const Icon(Icons.inventory_2_outlined,
+                   child: const Icon(Icons.add,
                        color: Colors.white, size: 22),
                  ),
                ],
@@ -288,10 +349,12 @@ class AddProductScreen extends ConsumerStatefulWidget {
      child: CustomPaint(
        painter: DashedBorderPainter(
          color: AppColors.indigo.withOpacity(0.4),
+         strokeWidth: 1.5,
+
        ),
        child: Container(
          width: double.infinity,
-         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+         padding: const EdgeInsets.all(24),
          decoration: BoxDecoration(
            color: const Color(0xFFF8F9FF),
            borderRadius: BorderRadius.circular(16),
@@ -309,7 +372,7 @@ class AddProductScreen extends ConsumerStatefulWidget {
                child: CircularProgressIndicator(
                    color: AppColors.indigo, strokeWidth: 2.5),
              )
-                 : const Icon(Icons.crop_free_rounded,
+                 : const Icon(Icons.qr_code_scanner_rounded,
                  color: AppColors.indigo, size: 28),
            ),
            const SizedBox(height: 14),
@@ -318,7 +381,7 @@ class AddProductScreen extends ConsumerStatefulWidget {
              style: AppTextStyles.fieldLabel.copyWith(
                color: AppColors.indigo,
                fontSize: 16,
-               fontWeight: FontWeight.w700,
+               fontWeight: FontWeight.w800,
              ),
            ),
            const SizedBox(height: 4),
@@ -388,7 +451,8 @@ class AddProductScreen extends ConsumerStatefulWidget {
                child: Column(
                  mainAxisAlignment: MainAxisAlignment.center,
                  children: [
-                   Text(ProductCategory.iconOf(c), style: const TextStyle(fontSize: 26)),
+                   CategoryIcon(path: ProductCategory.iconOf(c), size: 26),
+
                    const SizedBox(height: 6),
                    Text(c,
                      style: AppTextStyles.caption.copyWith(
@@ -411,8 +475,6 @@ class AddProductScreen extends ConsumerStatefulWidget {
      crossAxisAlignment: CrossAxisAlignment.start,
      children: [
        Row(children: [
-         const Icon(Icons.location_on_rounded, color: AppColors.errorRed, size: 16),
-         const SizedBox(width: 6),
          Text('Emplacement *', style: AppTextStyles.fieldLabel),
        ]),
        const SizedBox(height: 12),
@@ -444,7 +506,10 @@ class AddProductScreen extends ConsumerStatefulWidget {
                  ),
                ),
                child: Row(children: [
-                 Text(ProductLocation.iconOf(loc), style: const TextStyle(fontSize: 20)),
+                 CategoryIcon(
+                   path: ProductLocation.iconOf(loc),
+                   size: 26,
+                 ),
                  const SizedBox(width: 8),
                  Text(
                    loc,
@@ -491,7 +556,7 @@ class AddProductScreen extends ConsumerStatefulWidget {
            Text('Prix', style: AppTextStyles.fieldLabel),
          ]),
          const SizedBox(height: 8),
-         _InputField(ctrl: _priceController, hint: '0.00',
+         _InputField(ctrl: _priceController, hint: '0',
              kb: const TextInputType.numberWithOptions(decimal: true), prefix:'Ar '),
        ],
      )),
@@ -552,7 +617,7 @@ class AddProductScreen extends ConsumerStatefulWidget {
          const Icon(Icons.warning_amber_rounded, color: AppColors.alertOrange, size: 13),
          const SizedBox(width: 5),
          Expanded(child: Text(
-           'Vous serez alerté quand le stock sera en dessous de ${_thresholdController.text} unités',
+           'Vous serez alerté quand le stock sera en dessous de ${_thresholdController.text} ${_unitController.text}',
            style: AppTextStyles.caption.copyWith(color: AppColors.alertOrange),
          )),
        ]),
@@ -685,19 +750,20 @@ class _UnitDropdown extends StatefulWidget {
 }
 
 class _UnitDropdownState extends State<_UnitDropdown> {
-  //ls unités
-  static const _units = ['unités', 'kg', 'g', 'L', 'mL', 'pcs', 'boîte', 'sachet', 'bouteille', 'rouleau'];
+  //les unités
+  final List<String> _units = ProductUnits.units;
 
   @override
   Widget build(BuildContext context) {
-    final current = widget.controller.text.isEmpty ? 'unités' : widget.controller.text;
-
+    final current = widget.controller.text.isEmpty || !_units.contains(widget.controller.text)
+        ? 'unités'
+        : widget.controller.text;
     return Container(
-      height: 48,
+      height: 52,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
         color: AppColors.white,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.border),
       ),
       child: DropdownButtonHideUnderline(
