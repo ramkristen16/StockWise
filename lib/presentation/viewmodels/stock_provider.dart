@@ -393,5 +393,6 @@ final filteredProductsProvider = Provider<List<ProductModel>>((ref) {
   }).toList();
 });
 
+
 final showCriticalOnlyProvider = StateProvider<bool>((ref) => false);
 

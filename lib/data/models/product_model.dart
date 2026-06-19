@@ -51,6 +51,7 @@ class ProductModel extends Product{
   @HiveField(13)
   final String householdId;
 
+
   ProductModel({
     required this.id,
     required this.name,
